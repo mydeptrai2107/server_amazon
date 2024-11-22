@@ -22,7 +22,7 @@ adminRouter.post("/admin/add-product", admin , async (req, res) => {
     }
 });
 
-adminRouter.post("/admin/update-product", admin, async (req, res) => {
+adminRouter.put("/admin/update-product", admin, async (req, res) => {
     try {
         const { id, name, description, images, quantity, price, category } = req.body;
 

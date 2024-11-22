@@ -4,6 +4,7 @@ const auth = require("../middlewares/auth");
 const { Product } = require("../model/product");
 const User = require("../model/user");
 const Order = require("../model/order");
+const Voucher = require("../model/voucher");
 
 
 
@@ -122,47 +123,67 @@ userRouter.post("/api/save-user-address" , auth , async (req, res) => {
 });
 
 
-userRouter.post("/api/order" , auth , async (req, res ) => {
+userRouter.post("/api/order", auth, async (req, res) => {
     try {
-        const { totalPrice , address } = req.body;
+        const { totalPrice, address, voucherCode } = req.body;
         let user = await User.findById(req.user);
         const userCart = user.cart;
-    let products  = [];
+        let products = [];
 
-    for(let i=0; i< userCart.length; i++){
-        let product = await Product.findById(userCart[i].product._id);
-        if(product.quantity >= userCart[i].quantity){
-            product.quantity -= userCart[i].quantity;
-            products.push({product, quantity : userCart[i].quantity});
-            await product.save();
-        } else {
-            return res.status(400).json({error : `${product.name} is out of stock!`});
+        let finalPrice = totalPrice;
+        if (voucherCode) {
+            const voucher = await Voucher.findOne({ code: voucherCode });
+            if (voucher) {
+                const currentDate = new Date();
+                if (voucher.expirationDate > currentDate && voucher.usedCount < voucher.usageLimit) {
+                    if (voucher.discountType === 'percentage') {
+                        finalPrice = totalPrice - (totalPrice * (voucher.discountValue / 100));
+                    } else if (voucher.discountType === 'fixed') {
+                        finalPrice = totalPrice - voucher.discountValue;
+                    }
+                    finalPrice = Math.max(finalPrice, 0);
+
+                    voucher.usedCount += 1;
+                    await voucher.save();
+                } else {
+                    return res.status(400).json({ error: 'Invalid or expired voucher' });
+                }
+            } else {
+                return res.status(400).json({ error: 'Voucher not found' });
+            }
         }
-    }
 
-    user.cart = [];
-    user = await user.save();
+        for (let i = 0; i < userCart.length; i++) {
+            let product = await Product.findById(userCart[i].product._id);
+            if (product.quantity >= userCart[i].quantity) {
+                product.quantity -= userCart[i].quantity;
+                products.push({ product, quantity: userCart[i].quantity });
+                await product.save();
+            } else {
+                return res.status(400).json({ error: `${product.name} is out of stock!` });
+            }
+        }
 
+        user.cart = [];
+        user = await user.save();
 
-    let order = new Order({
-        products, 
-        totalPrice,
-        address,
-        userId : req.user,
-        orderedAt : new Date().getTime(),
-    });
+        let order = new Order({
+            products,
+            totalPrice: finalPrice,
+            address,
+            userId: req.user,
+            orderedAt: new Date().getTime(),
+        });
 
-    
-    order = await order.save();
+        order = await order.save();
+        res.json(order);
 
-    res.json(order);
     } catch (e) {
         console.log(e);
-        res.status(500).json({error : e.message});
+        res.status(500).json({ error: e.message });
     }
-
-
 });
+
 
 
 userRouter.post("/api/place-order-buy-now", auth , async (req, res) => {
