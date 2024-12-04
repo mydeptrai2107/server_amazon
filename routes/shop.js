@@ -211,7 +211,7 @@ shopRouter.get("/supadmin/users", supadmin, async (req, res) => {
     }
 });
 
-userRouter.delete("/user/:id", supadmin, async (req, res) => {
+shopRouter.delete("/user/:id", supadmin, async (req, res) => {
     try {
         const { id } = req.params;
 
