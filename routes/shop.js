@@ -169,16 +169,14 @@ shopRouter.get("/supadmin/shop/all", supadmin, async (req, res) => {
 shopRouter.delete("/supadmin/shop/:id", supadmin, async (req, res) => {
     try {
         const { id } = req.params;
+        console.log(id)
 
-        // Tìm shop theo ID
-        const shop = await Shop.findById(id);
+        // Tìm shop theo ID và xóa
+        const shop = await Shop.findByIdAndDelete(id);
 
         if (!shop) {
             return res.status(404).json({ message: "Shop không tồn tại!" });
         }
-
-        // Xóa shop
-        await shop.remove();
 
         res.status(200).json({
             message: "Xóa shop thành công!",
@@ -211,7 +209,7 @@ shopRouter.get("/supadmin/users", supadmin, async (req, res) => {
     }
 });
 
-shopRouter.delete("/user/:id", supadmin, async (req, res) => {
+shopRouter.delete("/supadmin/user/:id", supadmin, async (req, res) => {
     try {
         const { id } = req.params;
 
